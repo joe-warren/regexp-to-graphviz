@@ -24,10 +24,14 @@ dependencies:
 - text
 - megaparsec
 - containers
+- mtl
 
 default-extensions: 
 - OverloadedStrings
 - DeriveFunctor
+- DerivingVia
+- ScopedTypeVariables
+- DeriveTraversable
 
 library:
   source-dirs: src

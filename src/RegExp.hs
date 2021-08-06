@@ -6,6 +6,7 @@ import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Traversable (Traversable)
 import Data.Void (Void)
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -16,7 +17,7 @@ data RegExp a
   | OneOrMore (RegExp a)
   | ZeroOrOne (RegExp a)
   | Exactly a
-  deriving (Functor, Show)
+  deriving (Functor, Foldable, Traversable, Show)
 
 type Parser = P.Parsec Void Text
 

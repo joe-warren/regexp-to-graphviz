@@ -25,7 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      GraphViz
       Lib
+      Printer
       RegExp
   other-modules:
       Paths_regexp_fsm
@@ -34,10 +36,14 @@ library
   default-extensions:
       OverloadedStrings
       DeriveFunctor
+      DerivingVia
+      ScopedTypeVariables
+      DeriveTraversable
   build-depends:
       base >=4.7 && <5
     , containers
     , megaparsec
+    , mtl
     , text
   default-language: Haskell2010
 
@@ -50,11 +56,15 @@ executable regexp-fsm-exe
   default-extensions:
       OverloadedStrings
       DeriveFunctor
+      DerivingVia
+      ScopedTypeVariables
+      DeriveTraversable
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , megaparsec
+    , mtl
     , regexp-fsm
     , text
   default-language: Haskell2010
@@ -69,11 +79,15 @@ test-suite regexp-fsm-test
   default-extensions:
       OverloadedStrings
       DeriveFunctor
+      DerivingVia
+      ScopedTypeVariables
+      DeriveTraversable
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , containers
     , megaparsec
+    , mtl
     , regexp-fsm
     , text
   default-language: Haskell2010
