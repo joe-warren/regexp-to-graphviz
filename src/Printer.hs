@@ -1,6 +1,7 @@
 module Printer where
 
 import Control.Monad
+import Control.Monad.Fix (mfix)
 import Data.Foldable (foldlM)
 import Data.Functor
 import Data.List.NonEmpty (NonEmpty)
@@ -23,10 +24,11 @@ joinEdges previously (RE.Exactly a) = forM_ previously (`GV.mkEdge` a) $> return
 joinEdges previously (RE.AnyOf children) = join <$> traverse (joinEdges previously) children
 joinEdges previously (RE.SeveralOf children) = foldlM joinEdges previously children
 joinEdges previously (RE.ZeroOrOne child) = (previously <>) <$> joinEdges previously child
-joinEdges previously (RE.OneOrMore child) = do
-  lastNodes <- joinEdges previously child
-  forM_ lastNodes $ \s -> forM_ (headNodes child) (GV.mkEdge s)
-  return lastNodes
+joinEdges previously (RE.OneOrMore child) = mfix ((`joinEdges` child) . (previously <>))
+
+{--lastNodes <- joinEdges previously child
+forM_ lastNodes $ \s -> forM_ (headNodes child) (GV.mkEdge s)
+return lastNodes--}
 
 graphRegExp :: [RegExp Char] -> GraphViz
 graphRegExp regexp = GV.runGraphVizM $ do

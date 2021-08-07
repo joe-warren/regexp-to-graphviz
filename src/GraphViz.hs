@@ -15,7 +15,7 @@ incrementCounter :: Counter -> Counter
 incrementCounter = Counter . (+ 1) . unCounter
 
 newtype GraphVizM a = GraphVisM {unGraphVizM :: StateT Counter (Writer GraphViz) a}
-  deriving (Functor, Applicative, Monad, MonadState Counter, MonadWriter GraphViz) via (StateT Counter (Writer GraphViz))
+  deriving (Functor, Applicative, Monad, MonadState Counter, MonadWriter GraphViz, MonadFix) via (StateT Counter (Writer GraphViz))
 
 runGraphVizM :: GraphVizM () -> GraphViz
 runGraphVizM = wrap . execWriter . (`evalStateT` (Counter 0)) . unGraphVizM . (setDefaults >>)
