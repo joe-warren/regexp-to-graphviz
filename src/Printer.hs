@@ -32,16 +32,16 @@ endNode = do
   GV.setNodeShape GV.Circle
   GV.newNode ""
 
-graphRegExp :: (a -> GraphVizM GV.NodeRef) -> [RegExp a] -> GraphViz
+graphRegExp :: (a -> GraphVizM GV.NodeRef) -> RegExp a -> GraphViz
 graphRegExp nodeFn regexp = GV.runGraphVizM $ do
-  nodes <- traverse (traverse nodeFn) regexp
+  nodes <- traverse nodeFn regexp
   start <- startNode
   end <- endNode
-  lastNodes <- foldlM joinEdges (pure start) nodes
+  lastNodes <- joinEdges (pure start) nodes
   forM_ lastNodes (`GV.mkEdge` end)
 
-graphCharRegExp :: [RegExp Char] -> GraphViz
+graphCharRegExp :: RegExp Char -> GraphViz
 graphCharRegExp = graphRegExp (GV.newNode . T.singleton)
 
-graphColourRegExp :: [RegExp GV.Colour] -> GraphViz
+graphColourRegExp :: RegExp GV.Colour -> GraphViz
 graphColourRegExp = graphRegExp $ \colour -> GV.setNodeFill colour >> GV.newNode ""

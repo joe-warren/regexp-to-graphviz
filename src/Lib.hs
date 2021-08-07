@@ -52,7 +52,7 @@ someFunc = do
   (Options t output args) <- OA.execParser optionsParser
   let process = case t of
         Character -> fmap P.graphCharRegExp . RE.parseCharRegExp
-        Colour -> fmap (P.graphColourRegExp . fmap (fmap GV.Colour)) . RE.parseBraceRegExp
+        Colour -> fmap (P.graphColourRegExp . fmap GV.Colour) . RE.parseBraceRegExp
   forM_ args $ \a -> case process a of
     Left err -> T.hPutStrLn stderr err
     Right gv -> output . GV.getGraphvizSource $ gv

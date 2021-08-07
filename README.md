@@ -9,6 +9,10 @@ Generate a Dot file from a RegExp.
 
 ![](examples/complex.png)
 
+## `seren(ade|(dip)?ity)`
+
+![](examples/long-choices.png)
+
 ## `--colour {blue}{yellow}+[{red}{orange}{green}]`
 
 ![](examples/colours.png)

@@ -1,9 +1,11 @@
 module RegExp where
 
 import Control.Applicative
+import Control.Applicative (Alternative)
+import Control.Monad (MonadPlus)
 import Data.Bifunctor (first)
 import Data.Functor
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
@@ -25,11 +27,26 @@ data RegExp a
 
 type Parser = P.Parsec Void Text
 
+severalOf :: NonEmpty (RegExp a) -> RegExp a
+severalOf (a :| []) = a
+severalOf as = SeveralOf as
+
+anyOf :: NonEmpty (RegExp a) -> RegExp a
+anyOf (a :| []) = a
+anyOf as = AnyOf as
+
+sepBy1 :: Alternative m => m a -> m sep -> m (NonEmpty a)
+sepBy1 p sep = (:|) <$> p <*> many (sep *> p)
+
 severalOfP :: Parser a -> Parser (RegExp a)
-severalOfP p = P.single '(' *> (SeveralOf <$> NE.some1 (P.notFollowedBy (P.single ')') *> regExpP p)) <* P.single ')'
+severalOfP p = P.single '(' *> listParser <* P.single ')'
+  where
+    exprParser = P.notFollowedBy (P.single ')' <|> P.single '|') *> regExpP p
+    subListParser = severalOf <$> NE.some1 exprParser
+    listParser = anyOf <$> sepBy1 subListParser (P.single '|')
 
 anyOfP :: Parser a -> Parser (RegExp a)
-anyOfP p = P.single '[' *> (AnyOf <$> NE.some1 (P.notFollowedBy (P.single ']') *> regExpP p)) <* P.single ']'
+anyOfP p = P.single '[' *> (anyOf <$> NE.some1 (P.notFollowedBy (P.single ']') *> regExpP p)) <* P.single ']'
 
 exactlyP :: Parser a -> Parser (RegExp a)
 exactlyP p = Exactly <$> p
@@ -50,9 +67,13 @@ withoutSuffixP p =
 regExpP :: Parser a -> Parser (RegExp a)
 regExpP p = withoutSuffixP p <**> suffixP
 
-parseRegExp :: Parser a -> Text -> Either Text [RegExp a]
-parseRegExp p t = first (T.pack . P.errorBundlePretty) $ P.runParser ((P.many $ regExpP p) <* P.eof) "regexp" t
+parseRegExp :: Parser a -> Text -> Either Text (RegExp a)
+parseRegExp parser text =
+  let sequenceP = severalOf <$> NE.some1 (regExpP parser) <* P.eof
+   in first (T.pack . P.errorBundlePretty) $ P.runParser sequenceP "regexp" text
 
+parseCharRegExp :: Text -> Either Text (RegExp Char)
 parseCharRegExp = parseRegExp (P.anySingle <?> "character")
 
+parseBraceRegExp :: Text -> Either Text (RegExp Text)
 parseBraceRegExp = parseRegExp (P.single '{' *> P.takeWhileP Nothing (/= '}') <* P.single '}' <?> "subexpression")
