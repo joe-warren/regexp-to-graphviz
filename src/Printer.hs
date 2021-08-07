@@ -13,13 +13,6 @@ import qualified GraphViz as GV
 import RegExp (RegExp)
 import qualified RegExp as RE
 
-headNodes :: RegExp a -> NonEmpty a
-headNodes (RE.Exactly a) = return a
-headNodes (RE.AnyOf children) = children >>= headNodes
-headNodes (RE.SeveralOf children) = headNodes $ NE.head children
-headNodes (RE.ZeroOrOne child) = headNodes child
-headNodes (RE.OneOrMore child) = headNodes child
-
 joinEdges :: NonEmpty GV.NodeRef -> RegExp GV.NodeRef -> GraphVizM (NonEmpty GV.NodeRef)
 joinEdges previously (RE.Exactly a) = forM_ previously (`GV.mkEdge` a) $> return a
 joinEdges previously (RE.AnyOf children) = join <$> traverse (joinEdges previously) children
@@ -27,16 +20,23 @@ joinEdges previously (RE.SeveralOf children) = foldlM joinEdges previously child
 joinEdges previously (RE.ZeroOrOne child) = (previously <>) <$> joinEdges previously child
 joinEdges previously (RE.OneOrMore child) = mfix ((`joinEdges` child) . (previously <>))
 
-graphRegExp :: (a -> GV.GraphVizM GV.NodeRef) -> [RegExp a] -> GraphViz
-graphRegExp nodeFn regexp = GV.runGraphVizM $ do
-  GV.setNodeFill $ GV.Colour "white"
-  nodes <- traverse (traverse nodeFn) regexp
+startNode :: GraphVizM GV.NodeRef
+startNode = do
   GV.setNodeFill $ GV.Colour "white"
   GV.setNodeShape GV.DoubleCircle
-  start <- GV.newNode ""
+  GV.newNode ""
+
+endNode :: GraphVizM GV.NodeRef
+endNode = do
   GV.setNodeFill $ GV.Colour "black"
   GV.setNodeShape GV.Circle
-  end <- GV.newNode ""
+  GV.newNode ""
+
+graphRegExp :: (a -> GraphVizM GV.NodeRef) -> [RegExp a] -> GraphViz
+graphRegExp nodeFn regexp = GV.runGraphVizM $ do
+  nodes <- traverse (traverse nodeFn) regexp
+  start <- startNode
+  end <- endNode
   lastNodes <- foldlM joinEdges (pure start) nodes
   forM_ lastNodes (`GV.mkEdge` end)
 
