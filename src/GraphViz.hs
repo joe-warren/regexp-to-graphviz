@@ -61,7 +61,7 @@ setNodeShape s =
 setNodeFill :: Colour -> GraphVizM ()
 setNodeFill c =
   tell . GraphViz . T.concat $
-    [ "node [style=filled, fillcolor = ",
+    [ "node [style=filled, fillcolor = \"",
       rawColour c,
-      "];\n"
+      "\"];\n"
     ]
