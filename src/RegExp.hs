@@ -8,6 +8,7 @@ import qualified Data.List.NonEmpty as NE
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Internal.Fusion.Common as P
 import Data.Traversable (Traversable)
 import Data.Void (Void)
 import Text.Megaparsec ((<?>))
@@ -49,7 +50,9 @@ withoutSuffixP p =
 regExpP :: Parser a -> Parser (RegExp a)
 regExpP p = withoutSuffixP p <**> suffixP
 
-parseRegExp :: Text -> Either Text [RegExp Char]
-parseRegExp t = first (T.pack . P.errorBundlePretty) $ P.runParser ((P.many $ regExpP charParser) <* P.eof) "regexp" t
-  where
-    charParser = P.anySingle <?> "elem" --P.noneOf ['[', ']', '(', ')', '+', '?', '*']
+parseRegExp :: Parser a -> Text -> Either Text [RegExp a]
+parseRegExp p t = first (T.pack . P.errorBundlePretty) $ P.runParser ((P.many $ regExpP p) <* P.eof) "regexp" t
+
+parseCharRegExp = parseRegExp (P.anySingle <?> "character")
+
+parseBraceRegExp = parseRegExp (P.single '{' *> P.takeWhileP Nothing (/= '}') <* P.single '}' <?> "subexpression")
