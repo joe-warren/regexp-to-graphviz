@@ -16,3 +16,7 @@ Generate a Dot file from a RegExp.
 ## `--colour {blue}{yellow}+[{red}{orange}{green}]`
 
 ![](examples/colours.png)
+
+## `--nested --nested --colour ({{{red}+[{yellow}{green}]}{{orange}*}}|{{{blue}}}){{{red}{green}}}`
+
+![](examples/nested.png)
