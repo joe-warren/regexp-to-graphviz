@@ -1,7 +1,6 @@
 module RegExp where
 
 import Control.Applicative
-import Control.Applicative (Alternative)
 import Control.Monad (MonadPlus)
 import Data.Bifunctor (first)
 import Data.Functor
@@ -41,12 +40,12 @@ sepBy1 p sep = (:|) <$> p <*> many (sep *> p)
 severalOfP :: Parser a -> Parser (RegExp a)
 severalOfP p = P.single '(' *> listParser <* P.single ')'
   where
-    exprParser = P.notFollowedBy (P.single ')' <|> P.single '|') *> regExpP p
+    exprParser = P.notFollowedBy (P.single ')' <|> P.single '|') *> singleRegExpP p
     subListParser = severalOf <$> NE.some1 exprParser
     listParser = anyOf <$> sepBy1 subListParser (P.single '|')
 
 anyOfP :: Parser a -> Parser (RegExp a)
-anyOfP p = P.single '[' *> (anyOf <$> NE.some1 (P.notFollowedBy (P.single ']') *> regExpP p)) <* P.single ']'
+anyOfP p = P.single '[' *> (anyOf <$> NE.some1 (P.notFollowedBy (P.single ']') *> singleRegExpP p)) <* P.single ']'
 
 exactlyP :: Parser a -> Parser (RegExp a)
 exactlyP p = Exactly <$> p
@@ -64,16 +63,26 @@ withoutSuffixP p =
     <|> anyOfP p
     <|> exactlyP p
 
-regExpP :: Parser a -> Parser (RegExp a)
-regExpP p = withoutSuffixP p <**> suffixP
+singleRegExpP :: Parser a -> Parser (RegExp a)
+singleRegExpP p = (withoutSuffixP p <**> suffixP)
 
-parseRegExp :: Parser a -> Text -> Either Text (RegExp a)
-parseRegExp parser text =
-  let sequenceP = severalOf <$> NE.some1 (regExpP parser) <* P.eof
-   in first (T.pack . P.errorBundlePretty) $ P.runParser sequenceP "regexp" text
+regExpP :: Parser a -> Parser (RegExp a)
+regExpP p = severalOf <$> NE.some1 (singleRegExpP p)
+
+parseRegExp :: Parser a -> Text -> Either Text a
+parseRegExp parser text = first (T.pack . P.errorBundlePretty) $ P.runParser parser "regexp" text
+
+charRegExpParser :: Parser (RegExp Char)
+charRegExpParser = regExpP (P.anySingle <?> "character")
 
 parseCharRegExp :: Text -> Either Text (RegExp Char)
-parseCharRegExp = parseRegExp (P.anySingle <?> "character")
+parseCharRegExp = parseRegExp charRegExpParser
+
+braceRegExParser :: Parser (RegExp Text)
+braceRegExParser = regExpP (P.single '{' *> P.takeWhileP Nothing (/= '}') <* P.single '}' <?> "subexpression")
+
+nestedParser :: Parser (RegExp a) -> Parser (RegExp (RegExp a))
+nestedParser child = regExpP $ (P.single '{') *> (P.notFollowedBy (P.single '}') *> child) <* (P.single '}')
 
 parseBraceRegExp :: Text -> Either Text (RegExp Text)
-parseBraceRegExp = parseRegExp (P.single '{' *> P.takeWhileP Nothing (/= '}') <* P.single '}' <?> "subexpression")
+parseBraceRegExp = parseRegExp braceRegExParser
