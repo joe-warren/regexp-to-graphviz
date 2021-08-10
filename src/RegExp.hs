@@ -66,23 +66,26 @@ withoutSuffixP p =
 singleRegExpP :: Parser a -> Parser (RegExp a)
 singleRegExpP p = (withoutSuffixP p <**> suffixP)
 
+topLevelSeveralOfP :: Parser (RegExp a) -> Parser (RegExp a)
+topLevelSeveralOfP = fmap severalOf . NE.some1
+
 regExpP :: Parser a -> Parser (RegExp a)
-regExpP p = severalOf <$> NE.some1 (singleRegExpP p)
+regExpP p = topLevelSeveralOfP (singleRegExpP p)
 
-parseRegExp :: Parser a -> Text -> Either Text a
-parseRegExp parser text = first (T.pack . P.errorBundlePretty) $ P.runParser parser "regexp" text
+parseRegExp :: Parser a -> Text -> Either Text (RegExp a)
+parseRegExp parser text = first (T.pack . P.errorBundlePretty) $ P.runParser (regExpP parser) "regexp" text
 
-charRegExpParser :: Parser (RegExp Char)
-charRegExpParser = regExpP (P.anySingle <?> "character")
+charRegExpParser :: Parser Char
+charRegExpParser = (P.anySingle <?> "character")
 
 parseCharRegExp :: Text -> Either Text (RegExp Char)
 parseCharRegExp = parseRegExp charRegExpParser
 
-braceRegExParser :: Parser (RegExp Text)
-braceRegExParser = regExpP (P.single '{' *> P.takeWhileP Nothing (/= '}') <* P.single '}' <?> "subexpression")
+braceRegExParser :: Parser Text
+braceRegExParser = (P.single '{' *> P.takeWhileP Nothing (/= '}') <* P.single '}' <?> "subexpression")
 
-nestedParser :: Parser (RegExp a) -> Parser (RegExp (RegExp a))
-nestedParser child = regExpP $ (P.single '{') *> (P.notFollowedBy (P.single '}') *> child) <* (P.single '}')
+nestedParser :: Parser a -> Parser (RegExp a)
+nestedParser child = (P.single '{') *> (regExpP (P.notFollowedBy (P.single '}') *> child)) <* (P.single '}')
 
 parseBraceRegExp :: Text -> Either Text (RegExp Text)
 parseBraceRegExp = parseRegExp braceRegExParser
