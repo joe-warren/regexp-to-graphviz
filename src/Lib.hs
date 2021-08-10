@@ -11,7 +11,7 @@ import Control.Monad.Except (ExceptT (ExceptT), runExceptT)
 import Data.Data
 import Data.Foldable
 import Data.Functor.Compose
-import Data.Text
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Traversable (forM)
@@ -36,7 +36,7 @@ typeParser = iter Nested <$> nestDepthParser <*> unnestedParser
   where
     iter f 0 v = v
     iter f n v = iter f (n - 1) (f v)
-    nestDepthParser = OA.option OA.auto (OA.long "nest") <|> pure 0
+    nestDepthParser = length <$> (many $ OA.flag' () (OA.long "nested"))
     unnestedParser =
       OA.flag' Colour (OA.long "colour")
         <|> OA.flag' Character (OA.long "character")
