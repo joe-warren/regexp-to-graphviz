@@ -1,5 +1,3 @@
-{-# LANGUAGE ExistentialQuantification #-}
-
 module Lib
   ( someFunc,
   )
@@ -60,28 +58,22 @@ optionsParser =
         <*> some (OA.strArgument (OA.help "regexp"))
 
 handleError :: (a -> IO ()) -> Either Text a -> IO ()
-handleError = either (T.hPutStrLn stderr)
+handleError =
+  either
+    (T.hPutStrLn stderr)
 
-data ParserAndPrinter = forall a e.
-  ParserAndPrinter
-  { ppEC :: GV.EdgeConstructors e,
-    ppPrinter :: RE.RegExp a -> GV.GraphVizM (GV.SubgraphRef e),
-    ppParser :: RE.Parser a
-  }
+doParseAndPrint :: RE.Parser (GV.GraphVizM GV.EdgeEndpoint) -> T.Text -> Either T.Text (GV.GraphVizM ())
+doParseAndPrint parser = fmap (void . P.graphRegExp id) . RE.parseRegExp parser
 
-doParseAndPrint :: ParserAndPrinter -> T.Text -> Either T.Text (GV.GraphVizM ())
-doParseAndPrint (ParserAndPrinter _ printer parser) = fmap (void . printer) . RE.parseRegExp parser
-
-parserAndPrinterFor :: GraphType -> ParserAndPrinter
-parserAndPrinterFor Character = ParserAndPrinter GV.nodeRefEdgeConstructors P.graphCharRegExp RE.charRegExpParser
-parserAndPrinterFor Colour = ParserAndPrinter GV.nodeRefEdgeConstructors P.graphColourRegExp (GV.Colour <$> RE.braceRegExParser)
-parserAndPrinterFor (Nested subtype) = case (parserAndPrinterFor subtype) of
-  ParserAndPrinter ec subprinter subparser -> ParserAndPrinter (GV.promoteEdgeConstructors ec) (P.graphNestedRegExp (GV.promoteEdgeConstructors ec)) ((fmap subprinter) $ RE.nestedParser subparser)
+parserFor :: GraphType -> RE.Parser (GV.GraphVizM GV.EdgeEndpoint)
+parserFor Character = P.graphCharNode <$> RE.charRegExpParser
+parserFor Colour = P.graphColourNode . GV.Colour <$> RE.braceRegExParser
+parserFor (Nested subtype) = P.graphNestedRegExp <$> RE.nestedParser (parserFor subtype)
 
 someFunc :: IO ()
 someFunc = do
   (Options t output args) <- OA.execParser optionsParser
-  let process = doParseAndPrint . parserAndPrinterFor $ t
+  let process = doParseAndPrint . parserFor $ t
   handleError output $
     fmap (GV.getGraphVizSource . GV.runGraphVizM . void) $
       getCompose $

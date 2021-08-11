@@ -35,6 +35,8 @@ data SubgraphRef nodes = SubgraphRef
     subgraphNodes :: NonEmpty nodes
   }
 
+data EdgeEndpoint = NodeEndpoint NodeRef | SubgraphEndpoint (SubgraphRef EdgeEndpoint)
+
 digraph :: GraphVizM () -> GraphVizM NodeRef
 digraph g = do
   counter <- getUID
@@ -70,46 +72,35 @@ newNode name = do
   tell . GraphViz $ T.concat [rawId, "[label = \"", name, "\"];\n"]
   pure . NodeRef $ rawId
 
-data EdgeConstructors a = EdgeConstructors
-  { mkEdge :: a -> a -> GraphVizM (),
-    liftNodeRef :: GraphVizM NodeRef -> GraphVizM a,
-    getSomeNodeRef :: a -> NodeRef
-  }
+getSomeNodeRef :: EdgeEndpoint -> NodeRef
+getSomeNodeRef (NodeEndpoint n) = n
+getSomeNodeRef (SubgraphEndpoint s) = getSomeNodeRef . NE.head . subgraphNodes $ s
 
-nodeRefEdgeConstructors :: EdgeConstructors NodeRef
-nodeRefEdgeConstructors =
-  EdgeConstructors
-    { mkEdge = \a b -> tell . GraphViz . T.concat $ [getRawReference a, " -> ", getRawReference b, ";\n"],
-      liftNodeRef = id,
-      getSomeNodeRef = id
-    }
-
-promoteEdgeConstructors :: EdgeConstructors a -> EdgeConstructors (SubgraphRef a)
-promoteEdgeConstructors cons =
-  EdgeConstructors
-    { mkEdge = \a b -> do
-        pointId <- ("_" <>) . T.pack . show <$> getUID
-        tell . GraphViz . T.concat $
-          [ pointId,
-            "[shape = point];\n"
-          ]
-        tell . GraphViz . T.concat $
-          [ getRawReference . getSomeNodeRef cons . NE.head . subgraphNodes $ a,
-            " -> ",
-            pointId,
-            "[dir = none, ltail = ",
-            getRawSubgraphReference a,
-            "];\n",
-            pointId,
-            " -> ",
-            getRawReference . getSomeNodeRef cons . NE.head . subgraphNodes $ b,
-            "[ lhead = ",
-            getRawSubgraphReference b,
-            "];\n"
-          ],
-      liftNodeRef = subgraph . fmap pure . liftNodeRef cons,
-      getSomeNodeRef = getSomeNodeRef cons . NE.head . subgraphNodes
-    }
+mkEdge :: EdgeEndpoint -> EdgeEndpoint -> GraphVizM ()
+mkEdge (NodeEndpoint a) (NodeEndpoint b) = tell . GraphViz . T.concat $ [getRawReference a, " -> ", getRawReference b, ";\n"]
+mkEdge a b = do
+  pointId <- ("_" <>) . T.pack . show <$> getUID
+  tell . GraphViz . T.concat $
+    [ pointId,
+      "[shape = point];\n"
+    ]
+  tell . GraphViz . T.concat $
+    [ getRawReference . getSomeNodeRef $ a,
+      " -> ",
+      pointId,
+      "[dir = none, ltail = ",
+      subgraphReference a,
+      "];\n",
+      pointId,
+      " -> ",
+      getRawReference . getSomeNodeRef $ b,
+      "[ lhead = ",
+      subgraphReference b,
+      "];\n"
+    ]
+  where
+    subgraphReference (NodeEndpoint _) = "\"\""
+    subgraphReference (SubgraphEndpoint (SubgraphRef ref _)) = ref
 
 newtype Colour = Colour {rawColour :: Text}
 
