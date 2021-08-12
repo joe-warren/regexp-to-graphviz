@@ -63,7 +63,7 @@ handleError =
     (T.hPutStrLn stderr)
 
 doParseAndPrint :: RE.Parser (GV.GraphVizM GV.EdgeEndpoint) -> T.Text -> Either T.Text (GV.GraphVizM ())
-doParseAndPrint parser = fmap (void . P.graphRegExp id) . RE.parseRegExp parser
+doParseAndPrint parser = fmap (void . GV.subgraph . P.graphRegExp id) . RE.parseRegExp parser
 
 parserFor :: GraphType -> RE.Parser (GV.GraphVizM GV.EdgeEndpoint)
 parserFor Character = P.graphCharNode <$> RE.charRegExpParser

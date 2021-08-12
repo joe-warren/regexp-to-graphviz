@@ -4,6 +4,7 @@ import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Writer.Strict (MonadWriter)
+import Data.Bool (bool)
 import qualified Data.List.NonEmpty as NE
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -51,10 +52,11 @@ digraph g = do
   tell $ GraphViz "}\n"
   pure . NodeRef $ rawId
 
-subgraph :: GraphVizM (NonEmpty a) -> GraphVizM (SubgraphRef a)
-subgraph g = do
+subgraph' :: Bool -> GraphVizM (NonEmpty a) -> GraphVizM (SubgraphRef a)
+subgraph' isCluster g = do
   counter <- getUID
-  let rawId = "cluster_" <> (T.pack . show $ counter)
+  let prefix = bool "_" "cluster_" isCluster
+  let rawId = prefix <> (T.pack . show $ counter)
   tell . GraphViz . T.unlines $
     [ T.unwords ["subgraph", rawId, "{"],
       "rankdir=LR;",
@@ -64,6 +66,11 @@ subgraph g = do
   childNodes <- g
   tell $ GraphViz "\n}\n"
   pure $ SubgraphRef rawId childNodes
+
+subgraph :: GraphVizM (NonEmpty a) -> GraphVizM (SubgraphRef a)
+subgraph = subgraph' False
+
+cluster = subgraph' True
 
 newNode :: Text -> GraphVizM NodeRef
 newNode name = do

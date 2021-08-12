@@ -33,8 +33,8 @@ endNode = do
   GV.setNodeShape GV.Circle
   GV.newNode ""
 
-graphRegExp :: (a -> GraphVizM GV.EdgeEndpoint) -> RegExp a -> GraphVizM (GV.SubgraphRef GV.EdgeEndpoint)
-graphRegExp nodeFn regexp = GV.subgraph $ do
+graphRegExp :: (a -> GraphVizM GV.EdgeEndpoint) -> RegExp a -> GraphVizM (NonEmpty GV.EdgeEndpoint)
+graphRegExp nodeFn regexp = do
   nodes <- traverse nodeFn regexp
   start <- GV.NodeEndpoint <$> startNode
   end <- GV.NodeEndpoint <$> endNode
@@ -49,4 +49,4 @@ graphColourNode :: GV.Colour -> GraphVizM GV.EdgeEndpoint
 graphColourNode colour = GV.NodeEndpoint <$> (GV.setNodeFill colour >> GV.newNode "")
 
 graphNestedRegExp :: RegExp (GV.GraphVizM GV.EdgeEndpoint) -> GraphVizM (GV.EdgeEndpoint)
-graphNestedRegExp = fmap GV.SubgraphEndpoint . graphRegExp id
+graphNestedRegExp = fmap GV.SubgraphEndpoint . GV.cluster . graphRegExp id
